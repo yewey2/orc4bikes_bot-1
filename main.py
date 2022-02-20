@@ -1,3 +1,7 @@
+from dotenv import load_dotenv
+load_dotenv()  # take environment variables from .env.
+
+
 from Orc4bikesBot import Orc4bikesBot
 from admin import (
     ADMIN_GROUP_ID,

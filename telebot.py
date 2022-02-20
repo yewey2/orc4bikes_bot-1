@@ -59,7 +59,9 @@ class TeleBot:
     def log_exception(self, e, text=""):
         if text: 
             print(text)
-        print(f'Error occured at {self.now()}. Error is \n{e}')
+        
+        raise e
+        # print(f'Error occured at {self.now()}. Error is \n{e}')
 
     def calc_deduct(self,time_diff):
         """
@@ -113,8 +115,9 @@ class TeleBot:
         #     json.dump(user_data, f, sort_keys=True, indent=4)
         try:
             db.set_user_data(chat_id, user_data)
-        except Exception:
-            pass
+        except Exception as e:
+            raise e
+            # pass
     
     def get_user_id(self, username='') -> int:
         # table_data = dict()
@@ -143,9 +146,7 @@ class TeleBot:
         raise FileNotFoundError
 
     def update_bike(self, bike_data) -> None:
-        bike_name = bike_data.get('bike_name')
-        if not bike_name:
-            return
+        bike_name = bike_data['name']
         db.set_bike_data(bike_name, bike_data)
 
     def update_rental_log(self, update_list):
