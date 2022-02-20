@@ -433,8 +433,12 @@ class ConvoBot(TeleBot):
                 super().update_user(user_data)
 
                 bike = self.get_bike(bike_name)
+                print("bef")
+                print(bike)
                 bike['username'] = user_data.get('username')
                 bike['status'] = curr_time
+                print("aft")
+                print(bike)
                 self.update_bike(bike)
 
                 # Notify user
@@ -526,6 +530,7 @@ class ConvoBot(TeleBot):
             username = user_data.get('username')
             bike_name = user_data['bike_name']
             bike_data = self.get_bike(bike_name)
+            print(bike_data['status'])
             start_time = datetime.datetime.fromisoformat(bike_data['status']).strftime('%Y/%m/%d, %H:%M:%S')
             end_time = self.now().strftime('%Y/%m/%d, %H:%M:%S')
             self.update_rental_log([bike_name,username,start_time,end_time,deduction])

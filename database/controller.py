@@ -9,6 +9,31 @@ ACCESS_KEY = os.environ.get('ACCESS_KEY')
 SECRET_KEY = os.environ.get('SECRET_KEY')
 REGION_NAME = os.environ.get('REGION_NAME')
 
+class DecimalEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, Decimal):
+            return float(obj)
+        super().default(obj)  # Let the json module throw the error
+
+def float_to_decimal(obj):
+    """DynamoDB require Decimal in place of float"""
+    return json.loads(json.dumps(obj, cls=DecimalEncoder), parse_float=Decimal)
+
+def decimal_to_float(obj):
+    return json.loads(json.dumps(obj, cls=DecimalEncoder))
+
+def ensure_no_floats(obj):
+    if isinstance(obj, bool) or obj is None:
+        return True
+    if isinstance(obj, (str, int, Decimal)):
+        return True
+    if isinstance(obj, dict):
+        return ensure_no_floats([(k,v) for k,v in obj.items()])
+    if isinstance(obj, (tuple, list)):
+        return all([ensure_no_floats(e) for e in obj])
+    print(f"Warning: Unknown object found: {obj}")
+
+
 def create_users_table(dynamodb=None):
     """Creates users table if it doesn't exist"""
     if not dynamodb:
@@ -59,6 +84,7 @@ def get_user_data(chat_id=None, dynamodb=None):
     response = None
     try:
         response = table.get_item(Key={'chat_id': chat_id})['Item']
+        response = decimal_to_float(response)
     except ClientError as e:
         print(e.response['Error']['Message'])
     except KeyError as e:
@@ -69,7 +95,19 @@ def get_user_data(chat_id=None, dynamodb=None):
 
 def set_user_data(chat_id=None, user_data={}, dynamodb=None):
     """Updating single user's data"""
-    user_data = json.loads(json.dumps(user_data), parse_float=Decimal)
+    print("bef")
+    print(repr(user_data))
+    print()
+    user_data = float_to_decimal(user_data)
+
+    ensure_no_floats(user_data)
+
+    print("aft")
+    print(repr(user_data))
+    print()
+    
+    
+    input("Okay, no floats alr, press enter to continue")
     if not chat_id:
         return None
     # create_users_table()
@@ -110,8 +148,16 @@ def set_user_data(chat_id=None, user_data={}, dynamodb=None):
         exp_attr_name['#bn']='bike_name'
     if 'log' in user_data.keys():
         exp_attr_name['#l']='log'
+        
+    print("expattrval")
+    print(exp_attr_val)
+    print()
+    print("updateexp")
+    print(update_exp)
+    print()
     
     try:
+        input("Press enter to try dynaoming")
         response = table.update_item(
             Key={
                 'chat_id': chat_id,
@@ -127,8 +173,9 @@ def set_user_data(chat_id=None, user_data={}, dynamodb=None):
         print('Key Error! Item not found')
         print(e)
     except Exception as e:
-        print('error,', e)
+        print('error in controller,', e)
     finally:
+        input("completion")
         return response
 
 def create_bikes_table(dynamodb=None):
@@ -208,12 +255,15 @@ def get_all_bikes(dynamodb=None):
             response = table.scan(ExclusiveStartKey=response['LastEvaluatedKey'])
             data.extend(response['Items'])
         print(data)
+        response = decimal_to_float(response)
     except ClientError as e:
         print(e.response['Error']['Message'])
     except KeyError as e:
         print('Key Error! Item not found')
         print(e)
     finally:
+        # Quickfix
+        return {e['name']:e for e in data}
         return data
 
 def set_bike_data(bike_name=None, bike_data={}, dynamodb=None):
@@ -241,11 +291,11 @@ def set_bike_data(bike_name=None, bike_data={}, dynamodb=None):
         if k=="type":
             k= a+"t"
         return k
-    print('testing')
+    # print('testing')
     exp_attr_val = {f':{keywords(k)}':v for k,v in bike_data.items() if k!='name'}
     update_exp = 'set ' + ', '.join([f'{keywords(k,"#")}=:{keywords(k)}' for k in bike_data.keys() if k!='name'])
-    print(exp_attr_val)
-    print(update_exp)
+    # print(exp_attr_val)
+    # print(update_exp)
     try:
         response = table.update_item(
             Key={
@@ -260,6 +310,7 @@ def set_bike_data(bike_name=None, bike_data={}, dynamodb=None):
             },
             ReturnValues="UPDATED_NEW"
         )
+        response = decimal_to_float(response)
     except ClientError as e:
         print(e.response['Error']['Message'])
     except KeyError as e:
@@ -317,6 +368,7 @@ def get_username(username="", dynamodb=None):
     response = None
     try:
         response = table.get_item(Key={'username': username})['Item']
+        response = decimal_to_float(response)
     except ClientError as e:
         print(e.response['Error']['Message'])
     except KeyError as e:
